@@ -274,10 +274,24 @@
   .trend-empty{padding:30px 0;text-align:center;color:var(--espresso-soft);}
 
   /* ---------- Grouped sales ledger ---------- */
-  .day-group-row td{background:var(--cream-deep);font-weight:700;font-size:12.5px;padding:9px 12px;border-bottom:1px solid var(--line);}
+  .sales-card-toggle{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:none;border:none;cursor:pointer;padding:18px 20px;text-align:left;
+  }
+  .sales-card-toggle .sct-left{display:flex;align-items:center;gap:10px;}
+  .sales-card-toggle .sct-chev{font-size:12px;color:var(--espresso-soft);transition:transform .15s ease;display:inline-block;}
+  .sales-card-toggle[aria-expanded="true"] .sct-chev{transform:rotate(90deg);}
+  .sales-card-toggle .sct-title{font-family:'Baloo 2';font-weight:700;font-size:16px;}
+  .sales-card-toggle .sct-summary{font-size:12.5px;color:var(--espresso-soft);font-weight:600;}
+  .sales-card-toggle:hover .sct-title{color:var(--berry);}
+
+  .day-group-row td{background:var(--cream-deep);font-weight:700;font-size:12.5px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .day-group-row:hover td{background:var(--mango-soft);}
+  .day-group-row .dg-chev{display:inline-block;font-size:10px;color:var(--espresso-soft);width:14px;transition:transform .15s ease;}
+  .day-group-row.open .dg-chev{transform:rotate(90deg);}
   .day-group-row .dg-count{font-weight:500;color:var(--espresso-soft);margin-left:6px;}
   .day-group-row .dg-profit{float:right;font-family:'Baloo 2';}
-  .sales-caption{font-size:12.5px;color:var(--espresso-soft);padding:10px 4px 0;text-align:center;}
+  .sales-caption{font-size:12.5px;color:var(--espresso-soft);padding:10px 4px 14px;text-align:center;}
   .show-more-wrap{padding:14px;text-align:center;}
 
   /* ---------- Mobile ---------- */
@@ -330,6 +344,7 @@
           <div class="sub">Here's how the shop is doing.</div>
         </div>
         <div class="range-picker" id="rangePicker">
+          <button data-range="today">Today</button>
           <button data-range="7">7 days</button>
           <button data-range="30" class="active">30 days</button>
           <button data-range="all">All time</button>
@@ -429,24 +444,32 @@
         <button class="btn btn-primary" id="btnLogSale">✓ Log this sale</button>
       </div>
 
-      <div class="section-head"><h2 style="font-size:16px;">Recent sales</h2><div class="desc">Grouped by day, newest first — so it reads like a ledger, not an endless list.</div></div>
       <div class="card">
-        <div style="overflow-x:auto;">
-        <table>
-          <thead><tr>
-            <th>Product</th><th class="num">Qty</th>
-            <th class="num">Revenue</th><th class="num">Profit</th><th></th>
-          </tr></thead>
-          <tbody id="salesBody"></tbody>
-        </table>
+        <button class="sales-card-toggle" id="salesCardToggle" aria-expanded="false">
+          <span class="sct-left">
+            <span class="sct-chev" id="salesCardChev">▸</span>
+            <span class="sct-title">Recent sales</span>
+          </span>
+          <span class="sct-summary" id="salesCardSummary">Tap to view</span>
+        </button>
+        <div id="salesCardBody" style="display:none;">
+          <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Product</th><th class="num">Qty</th>
+              <th class="num">Revenue</th><th class="num">Profit</th><th></th>
+            </tr></thead>
+            <tbody id="salesBody"></tbody>
+          </table>
+          </div>
+          <div class="empty" id="salesEmpty" style="display:none;">
+            <div class="big">🧺</div>No sales logged yet.
+          </div>
+          <div class="show-more-wrap" id="salesShowMoreWrap" style="display:none;">
+            <button class="btn btn-ghost btn-sm" id="btnShowMoreSales">Show more days ↓</button>
+          </div>
+          <div class="sales-caption" id="salesCaption"></div>
         </div>
-        <div class="empty" id="salesEmpty" style="display:none;">
-          <div class="big">🧺</div>No sales logged yet.
-        </div>
-        <div class="show-more-wrap" id="salesShowMoreWrap" style="display:none;">
-          <button class="btn btn-ghost btn-sm" id="btnShowMoreSales">Show more days ↓</button>
-        </div>
-        <div class="sales-caption" id="salesCaption"></div>
       </div>
     </section>
 
@@ -750,6 +773,7 @@ function toast(msg){
 }
 function withinRange(dateStr, rangeDays){
   if(rangeDays==='all') return true;
+  if(rangeDays==='today') return dateStr === new Date().toISOString().slice(0,10);
   const d = new Date(dateStr+'T00:00:00');
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-Number(rangeDays)+1); cutoff.setHours(0,0,0,0);
   return d >= cutoff;
@@ -840,7 +864,7 @@ function renderDashboard(){
 
   // trend chart: profit per day
   const days = [];
-  const numDays = currentRange==='all' ? 30 : Number(currentRange);
+  const numDays = currentRange==='all' ? 30 : (currentRange==='today' ? 1 : Number(currentRange));
   for(let i=numDays-1;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
     days.push(d.toISOString().slice(0,10));
@@ -1100,18 +1124,24 @@ document.getElementById('btnLogSale').addEventListener('click',()=>{
 
 // Instead of one long scrolling list ("doomscroll"), sales are grouped into
 // day sections — like a ledger — and only a handful of days show by default.
+// The whole card starts minimised, and each day starts collapsed except the
+// most recent one, so nothing dumps a wall of rows on screen at once.
 let salesDaysShown = 5;
 const SALES_DAYS_PAGE = 5;
+let salesCardOpen = false;
+const expandedDates = {}; // date -> bool, filled in with a sensible default the first time we see each date
 
 function renderSalesTable(){
   const body = document.getElementById('salesBody');
   const empty = document.getElementById('salesEmpty');
   const caption = document.getElementById('salesCaption');
   const showMoreWrap = document.getElementById('salesShowMoreWrap');
+  const summary = document.getElementById('salesCardSummary');
   body.innerHTML = '';
 
   if(STATE.sales.length===0){
     empty.style.display='block'; caption.textContent=''; showMoreWrap.style.display='none';
+    summary.textContent = 'No sales yet';
     return;
   }
   empty.style.display='none';
@@ -1122,7 +1152,9 @@ function renderSalesTable(){
   const allDates = Object.keys(byDate).sort((a,b)=> b.localeCompare(a));
   const visibleDates = allDates.slice(0, salesDaysShown);
 
-  visibleDates.forEach(date=>{
+  visibleDates.forEach((date,i)=>{
+    if(!(date in expandedDates)) expandedDates[date] = (i===0); // newest day open by default, rest collapsed
+    const isOpen = expandedDates[date];
     const daySales = byDate[date];
     let dayProfit = 0;
     const rowsHtml = daySales.map(s=>{
@@ -1130,7 +1162,7 @@ function renderSalesTable(){
       if(!p) return '';
       const r = computeSale(s,p);
       dayProfit += r.profit;
-      return `<tr>
+      return `<tr class="day-detail-row" data-day="${date}" style="${isOpen?'':'display:none;'}">
         <td><div class="prod-cell"><div class="prod-emoji">${p.emoji||'🍬'}</div><div class="prod-name">${escapeHtml(p.name)}</div></div></td>
         <td class="num nums">${s.quantity}</td>
         <td class="num nums">${fmtMoney(r.revenue)}</td>
@@ -1140,8 +1172,8 @@ function renderSalesTable(){
     }).join('');
 
     const dateLabel = new Date(date+'T00:00:00').toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric', year:'numeric'});
-    body.insertAdjacentHTML('beforeend', `<tr class="day-group-row"><td colspan="5">
-        ${dateLabel}<span class="dg-count">${daySales.length} sale${daySales.length===1?'':'s'}</span>
+    body.insertAdjacentHTML('beforeend', `<tr class="day-group-row${isOpen?' open':''}" data-day="${date}"><td colspan="5">
+        <span class="dg-chev">▸</span>${dateLabel}<span class="dg-count">${daySales.length} sale${daySales.length===1?'':'s'}</span>
         <span class="dg-profit ${dayProfit>=0?'profit-pos':'profit-neg'} nums">${fmtMoney(dayProfit)}</span>
       </td></tr>${rowsHtml}`);
   });
@@ -1149,20 +1181,47 @@ function renderSalesTable(){
   const totalShown = visibleDates.reduce((n,d)=>n+byDate[d].length,0);
   caption.textContent = `Showing ${visibleDates.length} of ${allDates.length} day${allDates.length===1?'':'s'} · ${totalShown} of ${STATE.sales.length} sales`;
   showMoreWrap.style.display = visibleDates.length < allDates.length ? 'block' : 'none';
+
+  // summary shown on the collapsed card header, e.g. "6 sales today · ₱210.00 profit"
+  const today = new Date().toISOString().slice(0,10);
+  const todaySales = byDate[today] || [];
+  const todayProfit = todaySales.reduce((sum,s)=>{ const p=byId(s.productId); return p?sum+computeSale(s,p).profit:sum; },0);
+  summary.textContent = todaySales.length
+    ? `${todaySales.length} sale${todaySales.length===1?'':'s'} today · ${fmtMoney(todayProfit)} profit`
+    : `${STATE.sales.length} sale${STATE.sales.length===1?'':'s'} logged`;
 }
+
 document.getElementById('btnShowMoreSales').addEventListener('click', ()=>{
   salesDaysShown += SALES_DAYS_PAGE;
   renderSalesTable();
 });
+
 document.getElementById('salesBody').addEventListener('click',(e)=>{
-  const id = e.target.closest('[data-delsale]')?.dataset.delsale;
-  if(!id) return;
-  if(confirm('Remove this sale record?')){
-    STATE.sales = STATE.sales.filter(s=>s.id!==id);
-    persist(); renderSalesTable(); renderDashboard();
-    toast('Sale removed');
+  const delId = e.target.closest('[data-delsale]')?.dataset.delsale;
+  if(delId){
+    if(confirm('Remove this sale record?')){
+      STATE.sales = STATE.sales.filter(s=>s.id!==delId);
+      persist(); renderSalesTable(); renderDashboard();
+      toast('Sale removed');
+    }
+    return;
+  }
+  const dayHeader = e.target.closest('.day-group-row');
+  if(dayHeader){
+    const date = dayHeader.dataset.day;
+    expandedDates[date] = !expandedDates[date];
+    renderSalesTable();
   }
 });
+
+document.getElementById('salesCardToggle').addEventListener('click', ()=>{
+  salesCardOpen = !salesCardOpen;
+  document.getElementById('salesCardBody').style.display = salesCardOpen ? 'block' : 'none';
+  document.getElementById('salesCardToggle').setAttribute('aria-expanded', String(salesCardOpen));
+  document.getElementById('salesCardChev').textContent = salesCardOpen ? '▾' : '▸';
+  if(salesCardOpen) renderSalesTable();
+});
+
 
 /* ============================= REPORTS ============================= */
 function renderReports(){
