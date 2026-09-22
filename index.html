@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lexcel — Sales & Profit Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍉</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
+<style>
+  :root{
+    --cream:#FFF8EF;
+    --cream-deep:#FBEEDD;
+    --espresso:#2B1B14;
+    --espresso-soft:#6B5A52;
+    --berry:#C6285D;
+    --berry-dark:#9E1E49;
+    --mango:#F5A623;
+    --mango-soft:#FDECC8;
+    --leaf:#2F7A4D;
+    --leaf-soft:#E3F2E7;
+    --plum:#5B3358;
+    --line:#EFE0CE;
+    --white:#FFFFFF;
+    --danger:#C33A2E;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:9px;
+    --shadow-card: 0 1px 2px rgba(43,27,20,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--espresso);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{font-family:'Baloo 2',system-ui,sans-serif;}
+  .nums{font-variant-numeric:tabular-nums;}
+  button{font-family:inherit;}
+  ::selection{background:var(--mango-soft);}
+
+  /* ---------- App shell ---------- */
+  .app{display:flex;min-height:100vh;}
+
+  .sidebar{
+    width:240px;
+    flex:none;
+    background:var(--espresso);
+    color:var(--cream);
+    display:flex;
+    flex-direction:column;
+    padding:22px 14px;
+  }
+  .brand{
+    display:flex;align-items:center;gap:10px;
+    padding:6px 10px 22px 10px;
+  }
+  .brand-mark{
+    width:38px;height:38px;border-radius:11px;
+    background:linear-gradient(140deg,var(--berry),var(--mango));
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;flex:none;
+  }
+  .brand-text .name{font-family:'Baloo 2';font-size:20px;font-weight:700;line-height:1.1;color:var(--white);}
+  .brand-text .tag{font-size:11px;color:#C9BDB4;margin-top:1px;}
+
+  nav.navlist{display:flex;flex-direction:column;gap:2px;margin-top:6px;}
+  .navlist button{
+    display:flex;align-items:center;gap:11px;
+    background:transparent;border:none;color:#D9CCC2;
+    padding:11px 12px;border-radius:var(--radius-sm);
+    font-size:14.5px;font-weight:600;text-align:left;cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  .navlist button .ic{font-size:17px;width:20px;text-align:center;}
+  .navlist button:hover{background:rgba(255,255,255,0.06);color:var(--white);}
+  .navlist button.active{background:var(--white);color:var(--espresso);}
+
+  .sidebar-foot{margin-top:auto;padding:12px 10px 0;font-size:11.5px;color:#8A7B72;line-height:1.5;}
+
+  .main{flex:1;min-width:0;padding:30px 36px 60px;}
+  .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+  .topbar h1{margin:0;font-size:26px;font-weight:700;}
+  .topbar .sub{color:var(--espresso-soft);font-size:14px;margin-top:3px;}
+  .range-picker{display:flex;gap:6px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px;}
+  .range-picker button{
+    border:none;background:transparent;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;
+    color:var(--espresso-soft);cursor:pointer;
+  }
+  .range-picker button.active{background:var(--espresso);color:var(--white);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card);
+  }
+
+  .hero{
+    background:linear-gradient(120deg,var(--berry) 0%, var(--berry-dark) 55%, var(--plum) 100%);
+    border-radius:var(--radius-lg);
+    padding:28px 30px;
+    color:var(--white);
+    display:flex;justify-content:space-between;align-items:center;gap:24px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::after{
+    content:"";position:absolute;right:-40px;top:-40px;width:200px;height:200px;border-radius:50%;
+    background:radial-gradient(circle, rgba(245,166,35,0.35), transparent 70%);
+  }
+  .hero-label{font-size:13.5px;font-weight:600;color:#F6D9E3;letter-spacing:.2px;}
+  .hero-amount{font-family:'Baloo 2';font-size:52px;font-weight:800;line-height:1.05;margin-top:6px;}
+  .hero-amount span.cur{font-size:30px;opacity:.85;margin-right:2px;}
+  .hero-delta{margin-top:10px;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+  .hero-delta.up{color:#CFF5DC;}
+  .hero-delta.down{color:#FFD7D0;}
+  .hero-right{display:flex;gap:26px;position:relative;z-index:1;}
+  .hero-stat{text-align:right;}
+  .hero-stat .k{font-size:12px;color:#F0D8E1;font-weight:600;}
+  .hero-stat .v{font-family:'Baloo 2';font-size:21px;font-weight:700;margin-top:3px;}
+
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px;}
+  .stat{padding:18px 20px;}
+  .stat .k{font-size:12.5px;color:var(--espresso-soft);font-weight:600;}
+  .stat .v{font-family:'Baloo 2';font-size:24px;font-weight:700;margin-top:6px;}
+  .stat .v.leaf{color:var(--leaf);}
+
+  .twocol{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;}
+  @media (max-width:920px){.twocol{grid-template-columns:1fr;}}
+
+  .panel{padding:20px 22px;}
+  .panel h3{margin:0 0 2px;font-size:16px;}
+  .panel .desc{font-size:12.5px;color:var(--espresso-soft);margin-bottom:14px;}
+
+  .rank-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--cream-deep);}
+  .rank-row:last-child{border-bottom:none;}
+  .rank-emoji{width:34px;height:34px;border-radius:9px;background:var(--cream-deep);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;}
+  .rank-name{font-weight:600;font-size:13.5px;flex:1;min-width:0;}
+  .rank-sub{font-size:11.5px;color:var(--espresso-soft);}
+  .rank-qty{font-weight:700;font-size:13.5px;font-family:'Baloo 2';}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;
+    border-radius:11px;border:1px solid transparent;
+    padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;
+    transition:transform .08s ease, filter .12s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--berry);color:var(--white);}
+  .btn-primary:hover{filter:brightness(1.06);}
+  .btn-mango{background:var(--mango);color:var(--espresso);}
+  .btn-mango:hover{filter:brightness(1.05);}
+  .btn-ghost{background:var(--white);color:var(--espresso);border-color:var(--line);}
+  .btn-ghost:hover{background:var(--cream-deep);}
+  .btn-danger{background:#FBE7E4;color:var(--danger);}
+  .btn-danger:hover{background:#F7D5D0;}
+  .btn-sm{padding:6px 11px;font-size:12.5px;border-radius:8px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  /* ---------- Section headers ---------- */
+  .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+  .section-head h2{margin:0;font-size:20px;}
+  .section-head .desc{font-size:13px;color:var(--espresso-soft);margin-top:2px;}
+
+  /* ---------- Tables ---------- */
+  table{width:100%;border-collapse:collapse;}
+  thead th{
+    text-align:left;font-size:11.5px;text-transform:none;color:var(--espresso-soft);
+    font-weight:600;padding:0 12px 10px;border-bottom:1px solid var(--line);
+  }
+  thead th.num, td.num{text-align:right;}
+  tbody td{padding:12px 12px;border-bottom:1px solid var(--cream-deep);font-size:13.5px;vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--cream);}
+  .prod-cell{display:flex;align-items:center;gap:10px;}
+  .prod-emoji{width:32px;height:32px;border-radius:8px;background:var(--cream-deep);display:flex;align-items:center;justify-content:center;font-size:16px;flex:none;}
+  .prod-name{font-weight:600;}
+  .tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+  .tag.fruit{background:var(--leaf-soft);color:var(--leaf);}
+  .tag.sweet{background:#FCE4EC;color:var(--berry-dark);}
+  .tag.other{background:var(--mango-soft);color:#8A5A00;}
+  .profit-pos{color:var(--leaf);font-weight:700;}
+  .profit-neg{color:var(--danger);font-weight:700;}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end;}
+  .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:5px 7px;border-radius:7px;color:var(--espresso-soft);}
+  .icon-btn:hover{background:var(--cream-deep);color:var(--espresso);}
+
+  .empty{padding:40px 20px;text-align:center;color:var(--espresso-soft);}
+  .empty .big{font-size:34px;margin-bottom:8px;}
+  .empty .btn{margin-top:12px;}
+
+  /* ---------- Forms ---------- */
+  .field-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px;}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--espresso-soft);margin-bottom:5px;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--cream);font-size:14px;font-family:inherit;color:var(--espresso);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--mango);outline-offset:1px;background:var(--white);}
+  textarea{resize:vertical;min-height:64px;font-family:ui-monospace,monospace;font-size:12.5px;}
+  .emoji-pick{display:flex;flex-wrap:wrap;gap:6px;}
+  .emoji-pick button{
+    width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--cream);
+    font-size:17px;cursor:pointer;
+  }
+  .emoji-pick button.sel{border-color:var(--berry);background:var(--mango-soft);}
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(43,27,20,0.45);display:none;
+    align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--white);border-radius:var(--radius-lg);padding:24px 26px;
+    width:100%;max-width:440px;max-height:88vh;overflow:auto;
+  }
+  .modal h3{margin:0 0 14px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+
+  /* ---------- Settings ---------- */
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--cream-deep);gap:16px;flex-wrap:wrap;}
+  .toggle-row:last-child{border-bottom:none;}
+  .toggle-row .t-title{font-weight:600;font-size:14px;}
+  .toggle-row .t-desc{font-size:12.5px;color:var(--espresso-soft);margin-top:2px;max-width:420px;}
+  .toggle-row .t-input{display:flex;align-items:center;gap:8px;}
+  .switch{position:relative;width:42px;height:24px;flex:none;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:#DDD1C4;border-radius:999px;cursor:pointer;transition:.15s;}
+  .slider::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.15s;}
+  input:checked + .slider{background:var(--leaf);}
+  input:checked + .slider::before{transform:translateX(18px);}
+  .mini-input{width:90px;}
+  .formula-box{background:var(--espresso);color:#F4E9DE;padding:14px 16px;border-radius:12px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.7;overflow:auto;}
+  .formula-box b{color:var(--mango);}
+  .pill-note{display:inline-block;background:var(--mango-soft);color:#8A5A00;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;margin-left:6px;}
+
+  .kv-list{display:flex;flex-direction:column;gap:10px;}
+  .kv-list .kv{display:flex;justify-content:space-between;font-size:13.5px;padding:6px 0;border-bottom:1px dashed var(--line);}
+  .kv-list .kv:last-child{border-bottom:none;font-weight:700;}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--espresso);color:var(--white);padding:12px 20px;border-radius:12px;
+    font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:80;
+    display:flex;align-items:center;gap:8px;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  canvas{max-width:100%;}
+
+  /* ---------- Mobile ---------- */
+  @media (max-width:820px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;align-items:center;padding:12px 14px;gap:10px;overflow-x:auto;}
+    .brand{padding:0;}
+    .brand-text .tag{display:none;}
+    .navlist{flex-direction:row;margin-top:0;}
+    .navlist button span.lbl{display:none;}
+    .navlist button{padding:9px;}
+    .sidebar-foot{display:none;}
+    .main{padding:20px 16px 50px;}
+    .hero-amount{font-size:40px;}
+    .hero-right{gap:16px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">🍉</div>
+      <div class="brand-text">
+        <div class="name" id="bizNameDisplay">Lexcel</div>
+        <div class="tag">Sales &amp; profit, made simple</div>
+      </div>
+    </div>
+    <nav class="navlist" id="navlist">
+      <button data-view="dashboard" class="active"><span class="ic">🏠</span><span class="lbl">Dashboard</span></button>
+      <button data-view="products"><span class="ic">🍬</span><span class="lbl">Products</span></button>
+      <button data-view="sales"><span class="ic">🧾</span><span class="lbl">Log a Sale</span></button>
+      <button data-view="reports"><span class="ic">📊</span><span class="lbl">Reports</span></button>
+      <button data-view="settings"><span class="ic">⚙️</span><span class="lbl">Profit Formula</span></button>
+      <button data-view="data"><span class="ic">💾</span><span class="lbl">Backup &amp; Data</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      Your data stays in this browser only.<br>Back it up anytime from <b>Backup &amp; Data</b>.
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="topbar">
+        <div>
+          <h1 id="greeting">Good day 👋</h1>
+          <div class="sub">Here's how the shop is doing.</div>
+        </div>
+        <div class="range-picker" id="rangePicker">
+          <button data-range="7">7 days</button>
+          <button data-range="30" class="active">30 days</button>
+          <button data-range="all">All time</button>
+        </div>
+      </div>
+
+      <div class="hero">
+        <div>
+          <div class="hero-label">TOTAL PROFIT</div>
+          <div class="hero-amount"><span class="cur" id="heroCur">₱</span><span id="heroProfit" class="nums">0.00</span></div>
+          <div class="hero-delta up" id="heroDelta">Log your first sale to see this grow</div>
+        </div>
+        <div class="hero-right">
+          <div class="hero-stat"><div class="k">Revenue</div><div class="v nums" id="heroRevenue">₱0.00</div></div>
+          <div class="hero-stat"><div class="k">Margin</div><div class="v nums" id="heroMargin">0%</div></div>
+        </div>
+      </div>
+
+      <div class="statgrid">
+        <div class="card stat"><div class="k">Items sold</div><div class="v nums" id="statItems">0</div></div>
+        <div class="card stat"><div class="k">Orders logged</div><div class="v nums" id="statOrders">0</div></div>
+        <div class="card stat"><div class="k">Best seller</div><div class="v" id="statBest">—</div></div>
+        <div class="card stat"><div class="k">Cost of goods sold</div><div class="v nums" id="statCogs">₱0.00</div></div>
+      </div>
+
+      <div class="twocol">
+        <div class="card panel">
+          <h3>Profit over time</h3>
+          <div class="desc">Daily net profit for the selected range.</div>
+          <canvas id="chartTrend" height="180"></canvas>
+        </div>
+        <div class="card panel">
+          <h3>Most bought</h3>
+          <div class="desc">Ranked by quantity sold.</div>
+          <div id="topList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="view" id="view-products">
+      <div class="section-head">
+        <div>
+          <h2>Products</h2>
+          <div class="desc">Set your cost and selling price once — profit is calculated automatically from these.</div>
+        </div>
+        <button class="btn btn-primary" id="btnAddProduct">＋ Add product</button>
+      </div>
+      <div class="card">
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th>Product</th><th>Category</th>
+            <th class="num">Cost price</th><th class="num">Sell price</th>
+            <th class="num">Profit / unit</th><th class="num">In stock</th><th></th>
+          </tr></thead>
+          <tbody id="productsBody"></tbody>
+        </table>
+        </div>
+        <div class="empty" id="productsEmpty" style="display:none;">
+          <div class="big">🍊</div>
+          No products yet. Add your first fruit or sweet to get started.
+          <div><button class="btn btn-mango" id="btnAddProductEmpty">＋ Add your first product</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SALES -->
+    <section class="view" id="view-sales">
+      <div class="section-head">
+        <div>
+          <h2>Log a sale</h2>
+          <div class="desc">Pick what sold, how many, and Lexcel does the maths.</div>
+        </div>
+      </div>
+
+      <div class="card panel" style="margin-bottom:20px;">
+        <div class="field-row">
+          <div>
+            <label>Product</label>
+            <select id="saleProduct"></select>
+          </div>
+          <div>
+            <label>Quantity</label>
+            <input type="number" id="saleQty" min="1" value="1">
+          </div>
+          <div>
+            <label>Date</label>
+            <input type="date" id="saleDate">
+          </div>
+          <div>
+            <label>Discount (optional, total ₱)</label>
+            <input type="number" id="saleDiscount" min="0" value="0">
+          </div>
+        </div>
+        <div id="salePreview" class="kv-list" style="background:var(--cream);border-radius:12px;padding:14px 16px;margin:6px 0 14px;"></div>
+        <button class="btn btn-primary" id="btnLogSale">✓ Log this sale</button>
+      </div>
+
+      <div class="section-head"><h2 style="font-size:16px;">Recent sales</h2></div>
+      <div class="card">
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Product</th><th class="num">Qty</th>
+            <th class="num">Revenue</th><th class="num">Profit</th><th></th>
+          </tr></thead>
+          <tbody id="salesBody"></tbody>
+        </table>
+        </div>
+        <div class="empty" id="salesEmpty" style="display:none;">
+          <div class="big">🧺</div>No sales logged yet.
+        </div>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section class="view" id="view-reports">
+      <div class="section-head">
+        <div><h2>Reports</h2><div class="desc">A closer look at what's selling and what's earning.</div></div>
+      </div>
+      <div class="twocol">
+        <div class="card panel">
+          <h3>Top sellers by quantity</h3>
+          <div class="desc">Which items customers buy the most.</div>
+          <canvas id="chartTop" height="220"></canvas>
+        </div>
+        <div class="card panel">
+          <h3>Profit by product</h3>
+          <div class="desc">Which items actually earn the most.</div>
+          <canvas id="chartProfitByProduct" height="220"></canvas>
+        </div>
+      </div>
+      <div class="card panel">
+        <h3>Category breakdown</h3>
+        <div class="desc">Fruits vs. sweets vs. other, by revenue and profit.</div>
+        <div id="categoryTable"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS / FORMULA -->
+    <section class="view" id="view-settings">
+      <div class="section-head">
+        <div><h2>Profit formula</h2><div class="desc">Lexcel starts with a standard, accurate formula. Turn on only what applies to your shop.</div></div>
+      </div>
+
+      <div class="card panel" style="margin-bottom:16px;">
+        <h3>Business details</h3>
+        <div class="field-row">
+          <div><label>Business name</label><input type="text" id="setBizName" placeholder="e.g. Nena's Fruits &amp; Sweets"></div>
+          <div><label>Currency symbol</label><input type="text" id="setCurrency" maxlength="3" placeholder="₱"></div>
+        </div>
+      </div>
+
+      <div class="card panel" style="margin-bottom:16px;">
+        <h3>The standard formula <span class="pill-note">default, ON</span></h3>
+        <div class="desc">Applied to every sale, always:</div>
+        <div class="formula-box">Profit per sale = <b>Quantity</b> × (<b>Sell Price</b> − <b>Cost Price</b>) − <b>Discount</b></div>
+        <div class="desc" style="margin-top:10px;">Total profit for a period = sum of every sale's profit, minus anything you switch on below.</div>
+      </div>
+
+      <div class="card panel" style="margin-bottom:16px;">
+        <h3>Optional deductions</h3>
+        <div class="desc">Switch these on if they apply to your shop — off by default to keep things simple.</div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="t-title">Packaging / container cost</div>
+            <div class="t-desc">Subtract a per-item packaging cost (cups, bags, boxes) from profit. Set the cost on each product.</div>
+          </div>
+          <div class="t-input">
+            <label class="switch"><input type="checkbox" id="togPackaging"><span class="slider"></span></label>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="t-title">Tax on sales</div>
+            <div class="t-desc">Subtract a percentage of revenue for tax before counting it as profit.</div>
+          </div>
+          <div class="t-input">
+            <input type="number" class="mini-input" id="setTaxRate" min="0" max="100" value="0"> %
+            <label class="switch"><input type="checkbox" id="togTax"><span class="slider"></span></label>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="t-title">Other operating expenses</div>
+            <div class="t-desc">A fixed amount (rent share, ice, gas, spoilage) subtracted once from the period's total profit — not per sale.</div>
+          </div>
+          <div class="t-input">
+            <span id="curPrefix1">₱</span><input type="number" class="mini-input" id="setOpEx" min="0" value="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="card panel">
+        <h3>Advanced: write your own formula <span class="pill-note">optional</span></h3>
+        <div class="desc">For confident users only. Leave blank to keep the standard formula above. Available variables per sale: <code>quantity</code>, <code>sellPrice</code>, <code>costPrice</code>, <code>discount</code>, <code>packaging</code>, <code>revenue</code> (= quantity×sellPrice − discount).</div>
+        <textarea id="customFormula" placeholder="e.g. quantity * (sellPrice - costPrice) * 0.9 - discount"></textarea>
+        <div id="formulaError" style="color:var(--danger);font-size:12.5px;margin-top:6px;display:none;"></div>
+        <div class="modal-actions" style="justify-content:flex-start;margin-top:12px;">
+          <button class="btn btn-primary btn-sm" id="btnSaveFormula">Save formula</button>
+          <button class="btn btn-ghost btn-sm" id="btnResetFormula">Reset to standard</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DATA -->
+    <section class="view" id="view-data">
+      <div class="section-head">
+        <div><h2>Backup &amp; data</h2><div class="desc">This prototype stores everything in your browser only (no server, no account). Back up often.</div></div>
+      </div>
+
+      <div class="card panel" style="margin-bottom:16px;">
+        <h3>Export a backup</h3>
+        <div class="desc">Save your products and sales as a file you can keep, email, or move to another computer.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-mango" id="btnExportJson">⬇ Download backup (.json)</button>
+          <button class="btn btn-ghost" id="btnExportCsv">⬇ Download sales as spreadsheet (.csv)</button>
+        </div>
+      </div>
+
+      <div class="card panel" style="margin-bottom:16px;">
+        <h3>Restore a backup</h3>
+        <div class="desc">Load a previously exported .json file. This replaces what's currently on this device.</div>
+        <input type="file" id="importFile" accept="application/json">
+      </div>
+
+      <div class="card panel">
+        <h3 style="color:var(--danger);">Danger zone</h3>
+        <div class="desc">Permanently erase all products and sales on this device.</div>
+        <button class="btn btn-danger" id="btnClearAll">🗑 Erase all data</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Product modal -->
+<div class="modal-backdrop" id="productModalBackdrop">
+  <div class="modal">
+    <h3 id="productModalTitle">Add product</h3>
+    <input type="hidden" id="pid">
+    <div class="field-row">
+      <div style="grid-column:1/-1;">
+        <label>Product name</label>
+        <input type="text" id="pName" placeholder="e.g. Mangga (Mango)">
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        <label>Category</label>
+        <select id="pCategory">
+          <option value="Fruit">Fruit</option>
+          <option value="Sweet">Sweet</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label>Stock on hand (optional)</label>
+        <input type="number" id="pStock" min="0" value="0">
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        <label>Cost price / unit</label>
+        <input type="number" id="pCost" min="0" step="0.01" value="0">
+      </div>
+      <div>
+        <label>Sell price / unit</label>
+        <input type="number" id="pSell" min="0" step="0.01" value="0">
+      </div>
+      <div>
+        <label>Packaging cost / unit</label>
+        <input type="number" id="pPackaging" min="0" step="0.01" value="0">
+      </div>
+    </div>
+    <label>Icon</label>
+    <div class="emoji-pick" id="emojiPick"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCancelProduct">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveProduct">Save product</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================= STORAGE ============================= */
+const LS_KEYS = { products:'lexcel_products', sales:'lexcel_sales', settings:'lexcel_settings' };
+
+const EMOJIS = ['🍉','🍎','🍌','🍇','🥭','🍍','🍓','🍬','🍫','🍮','🧁','🍡','🍭','🥥','🍊'];
+
+function loadState(){
+  let products, sales, settings;
+  try{ products = JSON.parse(localStorage.getItem(LS_KEYS.products)); }catch(e){ products=null; }
+  try{ sales = JSON.parse(localStorage.getItem(LS_KEYS.sales)); }catch(e){ sales=null; }
+  try{ settings = JSON.parse(localStorage.getItem(LS_KEYS.settings)); }catch(e){ settings=null; }
+
+  if(!products){
+    products = [
+      {id:uid(), name:'Mangga (Mango)', category:'Fruit', costPrice:25, sellPrice:45, packagingCost:1, stock:60, emoji:'🥭'},
+      {id:uid(), name:'Saging (Banana)', category:'Fruit', costPrice:10, sellPrice:20, packagingCost:0.5, stock:80, emoji:'🍌'},
+      {id:uid(), name:'Watermelon slice', category:'Fruit', costPrice:15, sellPrice:35, packagingCost:2, stock:40, emoji:'🍉'},
+      {id:uid(), name:'Polvoron', category:'Sweet', costPrice:6, sellPrice:15, packagingCost:1, stock:120, emoji:'🍬'},
+      {id:uid(), name:'Buko Pandan cup', category:'Sweet', costPrice:20, sellPrice:45, packagingCost:3, stock:35, emoji:'🥥'},
+      {id:uid(), name:'Leche Flan slice', category:'Sweet', costPrice:18, sellPrice:40, packagingCost:2, stock:25, emoji:'🍮'},
+    ];
+  }
+  if(!sales){
+    const today = new Date();
+    sales = [];
+    for(let d=13; d>=0; d--){
+      const date = new Date(today); date.setDate(date.getDate()-d);
+      const n = 2 + Math.floor(Math.random()*4);
+      for(let i=0;i<n;i++){
+        const p = products[Math.floor(Math.random()*products.length)];
+        sales.push({
+          id: uid(),
+          productId: p.id,
+          quantity: 1 + Math.floor(Math.random()*6),
+          date: date.toISOString().slice(0,10),
+          discount: Math.random()<0.15 ? Math.round(Math.random()*10) : 0
+        });
+      }
+    }
+  }
+  if(!settings){
+    settings = {
+      bizName: 'Lexcel',
+      currency: '₱',
+      includePackaging: false,
+      includeTax: false,
+      taxRate: 0,
+      operatingExpenses: 0,
+      customFormula: ''
+    };
+  }
+  return {products, sales, settings};
+}
+
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+let STATE = loadState();
+
+function persist(){
+  localStorage.setItem(LS_KEYS.products, JSON.stringify(STATE.products));
+  localStorage.setItem(LS_KEYS.sales, JSON.stringify(STATE.sales));
+  localStorage.setItem(LS_KEYS.settings, JSON.stringify(STATE.settings));
+}
+
+/* ============================= FORMULA ENGINE ============================= */
+// Standard formula: profit = quantity*(sellPrice-costPrice) - discount - (packaging toggle) - (tax toggle on revenue)
+// Custom formula (optional): user-supplied math.js expression using the same variables.
+function computeSale(sale, product){
+  const settings = STATE.settings;
+  const quantity = Number(sale.quantity)||0;
+  const sellPrice = Number(product.sellPrice)||0;
+  const costPrice = Number(product.costPrice)||0;
+  const discount = Number(sale.discount)||0;
+  const packagingUnit = Number(product.packagingCost)||0;
+  const revenue = quantity*sellPrice - discount;
+  const cogs = quantity*costPrice;
+  const packaging = settings.includePackaging ? quantity*packagingUnit : 0;
+  const tax = settings.includeTax ? revenue*(Number(settings.taxRate)||0)/100 : 0;
+
+  let profit;
+  let usedCustom = false;
+  if(settings.customFormula && settings.customFormula.trim()){
+    try{
+      const scope = { quantity, sellPrice, costPrice, discount, packaging, revenue, cogs, tax };
+      profit = math.evaluate(settings.customFormula, scope);
+      if(typeof profit !== 'number' || !isFinite(profit)) throw new Error('not a number');
+      usedCustom = true;
+    }catch(e){
+      profit = revenue - cogs - packaging - tax;
+    }
+  } else {
+    profit = revenue - cogs - packaging - tax;
+  }
+  return {revenue, cogs, packaging, tax, profit, usedCustom};
+}
+
+function testFormula(expr){
+  try{
+    const scope = {quantity:2, sellPrice:40, costPrice:20, discount:0, packaging:2, revenue:80, cogs:40, tax:0};
+    const r = math.evaluate(expr, scope);
+    if(typeof r !== 'number' || !isFinite(r)) return {ok:false, msg:'Formula must produce a number.'};
+    return {ok:true};
+  }catch(e){
+    return {ok:false, msg:'Could not understand that formula: '+e.message};
+  }
+}
+
+/* ============================= HELPERS ============================= */
+function fmtMoney(n){
+  const cur = STATE.settings.currency || '₱';
+  const v = (Number(n)||0);
+  return cur + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function byId(id){ return STATE.products.find(p=>p.id===id); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._h);
+  toast._h = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function withinRange(dateStr, rangeDays){
+  if(rangeDays==='all') return true;
+  const d = new Date(dateStr+'T00:00:00');
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-Number(rangeDays)+1); cutoff.setHours(0,0,0,0);
+  return d >= cutoff;
+}
+
+/* ============================= NAVIGATION ============================= */
+document.getElementById('navlist').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-view]');
+  if(!btn) return;
+  document.querySelectorAll('.navlist button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  if(btn.dataset.view==='reports') renderReports();
+  if(btn.dataset.view==='dashboard') renderDashboard();
+  if(btn.dataset.view==='sales') { populateSaleProductSelect(); renderSalesTable(); }
+});
+
+let currentRange = '30';
+document.getElementById('rangePicker').addEventListener('click',(e)=>{
+  const btn = e.target.closest('button[data-range]');
+  if(!btn) return;
+  document.querySelectorAll('#rangePicker button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentRange = btn.dataset.range;
+  renderDashboard();
+});
+
+/* ============================= DASHBOARD ============================= */
+let trendChart, topChart, profitByProductChart;
+
+function renderDashboard(){
+  document.getElementById('bizNameDisplay').textContent = STATE.settings.bizName || 'Lexcel';
+  document.getElementById('heroCur').textContent = STATE.settings.currency || '₱';
+
+  const hour = new Date().getHours();
+  const greet = hour<12?'Good morning':hour<18?'Good afternoon':'Good evening';
+  document.getElementById('greeting').textContent = greet+' 👋';
+
+  const inRange = STATE.sales.filter(s=>withinRange(s.date, currentRange));
+  let revenue=0, cogs=0, profit=0, items=0;
+  const qtyByProduct = {};
+
+  inRange.forEach(s=>{
+    const p = byId(s.productId);
+    if(!p) return;
+    const r = computeSale(s,p);
+    revenue += r.revenue; cogs += r.cogs; profit += r.profit; items += Number(s.quantity)||0;
+    qtyByProduct[p.id] = (qtyByProduct[p.id]||0) + (Number(s.quantity)||0);
+  });
+  const netProfit = profit - (Number(STATE.settings.operatingExpenses)||0);
+  const margin = revenue>0 ? (netProfit/revenue*100) : 0;
+
+  animateNumber('heroProfit', netProfit);
+  document.getElementById('heroRevenue').textContent = fmtMoney(revenue);
+  document.getElementById('heroMargin').textContent = margin.toFixed(1)+'%';
+  document.getElementById('statItems').textContent = items.toLocaleString();
+  document.getElementById('statOrders').textContent = inRange.length.toLocaleString();
+  document.getElementById('statCogs').textContent = fmtMoney(cogs);
+
+  const heroDelta = document.getElementById('heroDelta');
+  if(inRange.length===0){
+    heroDelta.textContent = 'Log your first sale to see this grow';
+  } else {
+    heroDelta.textContent = (netProfit>=0?'▲ Profitable — ':'▼ Running at a loss — ') + inRange.length + ' order'+(inRange.length===1?'':'s')+' in this period';
+    heroDelta.className = 'hero-delta ' + (netProfit>=0?'up':'down');
+  }
+
+  const ranked = Object.entries(qtyByProduct).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('statBest').textContent = ranked.length ? byId(ranked[0][0]).name : '—';
+
+  const topList = document.getElementById('topList');
+  topList.innerHTML = '';
+  if(ranked.length===0){
+    topList.innerHTML = '<div class="empty" style="padding:20px 0;"><div class="big">🛒</div>No sales in this range yet.</div>';
+  } else {
+    ranked.slice(0,5).forEach(([pid,qty])=>{
+      const p = byId(pid); if(!p) return;
+      const row = document.createElement('div');
+      row.className = 'rank-row';
+      row.innerHTML = `<div class="rank-emoji">${p.emoji||'🍬'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="rank-name">${escapeHtml(p.name)}</div>
+          <div class="rank-sub">${p.category}</div>
+        </div>
+        <div class="rank-qty nums">${qty} sold</div>`;
+      topList.appendChild(row);
+    });
+  }
+
+  // trend chart: profit per day
+  const days = [];
+  const numDays = currentRange==='all' ? 30 : Number(currentRange);
+  for(let i=numDays-1;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const profitByDay = {};
+  days.forEach(d=>profitByDay[d]=0);
+  (currentRange==='all'?STATE.sales:inRange).forEach(s=>{
+    const p = byId(s.productId); if(!p) return;
+    if(!(s.date in profitByDay)){
+      if(currentRange!=='all') return;
+      profitByDay[s.date]=0;
+    }
+    profitByDay[s.date] += computeSale(s,p).profit;
+  });
+  const dayKeys = currentRange==='all' ? Object.keys(profitByDay).sort() : days;
+
+  const ctx = document.getElementById('chartTrend').getContext('2d');
+  const dataPts = dayKeys.map(d=>+profitByDay[d].toFixed(2));
+  const labels = dayKeys.map(d=>{ const dd=new Date(d+'T00:00:00'); return dd.toLocaleDateString(undefined,{month:'short',day:'numeric'}); });
+  if(trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{
+      label:'Profit', data:dataPts, borderColor:'#C6285D', backgroundColor:'rgba(198,40,93,0.08)',
+      fill:true, tension:.35, pointRadius:0, borderWidth:2.5
+    }]},
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false}}, y:{grid:{color:'#F3E7D8'}, ticks:{callback:v=>fmtMoney(v)} } },
+      responsive:true, maintainAspectRatio:true
+    }
+  });
+}
+
+function animateNumber(elId, target){
+  const el = document.getElementById(elId);
+  const start = parseFloat((el.textContent||'0').replace(/,/g,''))||0;
+  const dur = 500; const t0 = performance.now();
+  function step(t){
+    const p = Math.min(1,(t-t0)/dur);
+    const val = start + (target-start)*p;
+    el.textContent = val.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ============================= PRODUCTS ============================= */
+function renderProducts(){
+  const body = document.getElementById('productsBody');
+  const empty = document.getElementById('productsEmpty');
+  body.innerHTML = '';
+  if(STATE.products.length===0){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  STATE.products.forEach(p=>{
+    const perUnit = (Number(p.sellPrice)||0) - (Number(p.costPrice)||0) - (STATE.settings.includePackaging?(Number(p.packagingCost)||0):0);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="prod-cell"><div class="prod-emoji">${p.emoji||'🍬'}</div><div class="prod-name">${escapeHtml(p.name)}</div></div></td>
+      <td><span class="tag ${p.category.toLowerCase()}">${p.category}</span></td>
+      <td class="num nums">${fmtMoney(p.costPrice)}</td>
+      <td class="num nums">${fmtMoney(p.sellPrice)}</td>
+      <td class="num nums ${perUnit>=0?'profit-pos':'profit-neg'}">${fmtMoney(perUnit)}</td>
+      <td class="num nums">${p.stock ?? '—'}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" data-edit="${p.id}" title="Edit">✏️</button>
+        <button class="icon-btn" data-del="${p.id}" title="Delete">🗑️</button>
+      </div></td>`;
+    body.appendChild(tr);
+  });
+}
+
+document.getElementById('productsBody').addEventListener('click', (e)=>{
+  const editId = e.target.closest('[data-edit]')?.dataset.edit;
+  const delId = e.target.closest('[data-del]')?.dataset.del;
+  if(editId) openProductModal(byId(editId));
+  if(delId){
+    if(confirm('Delete this product? Past sales for it will stay in your records.')){
+      STATE.products = STATE.products.filter(p=>p.id!==delId);
+      persist(); renderProducts(); populateSaleProductSelect(); toast('Product deleted');
+    }
+  }
+});
+
+let selectedEmoji = '🍬';
+function openProductModal(p){
+  document.getElementById('productModalTitle').textContent = p ? 'Edit product' : 'Add product';
+  document.getElementById('pid').value = p ? p.id : '';
+  document.getElementById('pName').value = p ? p.name : '';
+  document.getElementById('pCategory').value = p ? p.category : 'Fruit';
+  document.getElementById('pStock').value = p ? (p.stock ?? 0) : 0;
+  document.getElementById('pCost').value = p ? p.costPrice : 0;
+  document.getElementById('pSell').value = p ? p.sellPrice : 0;
+  document.getElementById('pPackaging').value = p ? (p.packagingCost ?? 0) : 0;
+  selectedEmoji = p ? (p.emoji||'🍬') : '🍬';
+  renderEmojiPick();
+  document.getElementById('productModalBackdrop').classList.add('open');
+  document.getElementById('pName').focus();
+}
+function renderEmojiPick(){
+  const wrap = document.getElementById('emojiPick');
+  wrap.innerHTML='';
+  EMOJIS.forEach(em=>{
+    const b = document.createElement('button');
+    b.type='button'; b.textContent=em;
+    if(em===selectedEmoji) b.classList.add('sel');
+    b.addEventListener('click',()=>{ selectedEmoji=em; renderEmojiPick(); });
+    wrap.appendChild(b);
+  });
+}
+document.getElementById('btnAddProduct').addEventListener('click',()=>openProductModal(null));
+document.getElementById('btnAddProductEmpty').addEventListener('click',()=>openProductModal(null));
+document.getElementById('btnCancelProduct').addEventListener('click',()=>{
+  document.getElementById('productModalBackdrop').classList.remove('open');
+});
+document.getElementById('productModalBackdrop').addEventListener('click',(e)=>{
+  if(e.target.id==='productModalBackdrop') e.currentTarget.classList.remove('open');
+});
+document.getElementById('btnSaveProduct').addEventListener('click',()=>{
+  const name = document.getElementById('pName').value.trim();
+  if(!name){ toast('Please enter a product name'); return; }
+  const id = document.getElementById('pid').value;
+  const data = {
+    name,
+    category: document.getElementById('pCategory').value,
+    stock: Number(document.getElementById('pStock').value)||0,
+    costPrice: Number(document.getElementById('pCost').value)||0,
+    sellPrice: Number(document.getElementById('pSell').value)||0,
+    packagingCost: Number(document.getElementById('pPackaging').value)||0,
+    emoji: selectedEmoji
+  };
+  if(id){
+    const p = byId(id); Object.assign(p, data);
+  } else {
+    STATE.products.push({id:uid(), ...data});
+  }
+  persist();
+  document.getElementById('productModalBackdrop').classList.remove('open');
+  renderProducts(); populateSaleProductSelect(); renderDashboard();
+  toast('Product saved');
+});
+
+/* ============================= SALES ============================= */
+function populateSaleProductSelect(){
+  const sel = document.getElementById('saleProduct');
+  const cur = sel.value;
+  sel.innerHTML = STATE.products.map(p=>`<option value="${p.id}">${p.emoji||''} ${escapeHtml(p.name)}</option>`).join('');
+  if(cur) sel.value = cur;
+  updateSalePreview();
+}
+document.getElementById('saleDate').valueAsDate = new Date();
+
+['saleProduct','saleQty','saleDiscount'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', updateSalePreview);
+  document.getElementById(id).addEventListener('change', updateSalePreview);
+});
+
+function updateSalePreview(){
+  const pid = document.getElementById('saleProduct').value;
+  const p = byId(pid);
+  const preview = document.getElementById('salePreview');
+  if(!p){ preview.innerHTML=''; return; }
+  const sale = {
+    quantity: Number(document.getElementById('saleQty').value)||0,
+    discount: Number(document.getElementById('saleDiscount').value)||0
+  };
+  const r = computeSale(sale, p);
+  preview.innerHTML = `
+    <div class="kv"><span>Revenue</span><span class="nums">${fmtMoney(r.revenue)}</span></div>
+    <div class="kv"><span>Cost of goods</span><span class="nums">−${fmtMoney(r.cogs)}</span></div>
+    ${STATE.settings.includePackaging?`<div class="kv"><span>Packaging</span><span class="nums">−${fmtMoney(r.packaging)}</span></div>`:''}
+    ${STATE.settings.includeTax?`<div class="kv"><span>Tax</span><span class="nums">−${fmtMoney(r.tax)}</span></div>`:''}
+    <div class="kv"><span>Profit on this sale</span><span class="nums ${r.profit>=0?'profit-pos':'profit-neg'}">${fmtMoney(r.profit)}</span></div>
+  `;
+}
+
+document.getElementById('btnLogSale').addEventListener('click',()=>{
+  const pid = document.getElementById('saleProduct').value;
+  if(!pid){ toast('Add a product first'); return; }
+  const qty = Number(document.getElementById('saleQty').value)||0;
+  if(qty<=0){ toast('Quantity must be at least 1'); return; }
+  const sale = {
+    id: uid(),
+    productId: pid,
+    quantity: qty,
+    date: document.getElementById('saleDate').value || new Date().toISOString().slice(0,10),
+    discount: Number(document.getElementById('saleDiscount').value)||0
+  };
+  STATE.sales.unshift(sale);
+  const p = byId(pid);
+  if(p && typeof p.stock==='number'){ p.stock = Math.max(0, p.stock - qty); }
+  persist();
+  document.getElementById('saleQty').value = 1;
+  document.getElementById('saleDiscount').value = 0;
+  updateSalePreview();
+  renderSalesTable(); renderProducts(); renderDashboard();
+  toast('Sale logged 🎉');
+});
+
+function renderSalesTable(){
+  const body = document.getElementById('salesBody');
+  const empty = document.getElementById('salesEmpty');
+  body.innerHTML = '';
+  const recent = [...STATE.sales].sort((a,b)=> b.date.localeCompare(a.date)).slice(0,25);
+  if(recent.length===0){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  recent.forEach(s=>{
+    const p = byId(s.productId);
+    if(!p) return;
+    const r = computeSale(s,p);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${new Date(s.date+'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</td>
+      <td><div class="prod-cell"><div class="prod-emoji">${p.emoji||'🍬'}</div><div class="prod-name">${escapeHtml(p.name)}</div></div></td>
+      <td class="num nums">${s.quantity}</td>
+      <td class="num nums">${fmtMoney(r.revenue)}</td>
+      <td class="num nums ${r.profit>=0?'profit-pos':'profit-neg'}">${fmtMoney(r.profit)}</td>
+      <td><div class="row-actions"><button class="icon-btn" data-delsale="${s.id}" title="Delete">🗑️</button></div></td>`;
+    body.appendChild(tr);
+  });
+}
+document.getElementById('salesBody').addEventListener('click',(e)=>{
+  const id = e.target.closest('[data-delsale]')?.dataset.delsale;
+  if(!id) return;
+  if(confirm('Remove this sale record?')){
+    STATE.sales = STATE.sales.filter(s=>s.id!==id);
+    persist(); renderSalesTable(); renderDashboard();
+    toast('Sale removed');
+  }
+});
+
+/* ============================= REPORTS ============================= */
+function renderReports(){
+  const qtyByProduct = {}, profitByProduct = {};
+  const catAgg = {};
+  STATE.sales.forEach(s=>{
+    const p = byId(s.productId); if(!p) return;
+    const r = computeSale(s,p);
+    qtyByProduct[p.id] = (qtyByProduct[p.id]||0) + Number(s.quantity||0);
+    profitByProduct[p.id] = (profitByProduct[p.id]||0) + r.profit;
+    if(!catAgg[p.category]) catAgg[p.category] = {revenue:0, profit:0};
+    catAgg[p.category].revenue += r.revenue;
+    catAgg[p.category].profit += r.profit;
+  });
+
+  const topSorted = Object.entries(qtyByProduct).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const ctx1 = document.getElementById('chartTop').getContext('2d');
+  if(topChart) topChart.destroy();
+  topChart = new Chart(ctx1,{
+    type:'bar',
+    data:{ labels: topSorted.map(([id])=>byId(id)?.name||'—'),
+      datasets:[{ data: topSorted.map(([,q])=>q), backgroundColor:'#F5A623', borderRadius:6 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#F3E7D8'}}, y:{grid:{display:false}}} }
+  });
+
+  const profitSorted = Object.entries(profitByProduct).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const ctx2 = document.getElementById('chartProfitByProduct').getContext('2d');
+  if(profitByProductChart) profitByProductChart.destroy();
+  profitByProductChart = new Chart(ctx2,{
+    type:'bar',
+    data:{ labels: profitSorted.map(([id])=>byId(id)?.name||'—'),
+      datasets:[{ data: profitSorted.map(([,p])=>+p.toFixed(2)), backgroundColor:'#2F7A4D', borderRadius:6 }]},
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#F3E7D8'}, ticks:{callback:v=>fmtMoney(v)}}, y:{grid:{display:false}}} }
+  });
+
+  const catTable = document.getElementById('categoryTable');
+  const rows = Object.entries(catAgg).sort((a,b)=>b[1].profit-a[1].profit);
+  if(rows.length===0){
+    catTable.innerHTML = '<div class="empty" style="padding:20px 0;">No sales yet.</div>';
+  } else {
+    catTable.innerHTML = `<table><thead><tr><th>Category</th><th class="num">Revenue</th><th class="num">Profit</th><th class="num">Margin</th></tr></thead><tbody>
+      ${rows.map(([cat,v])=>`<tr>
+        <td><span class="tag ${cat.toLowerCase()}">${cat}</span></td>
+        <td class="num nums">${fmtMoney(v.revenue)}</td>
+        <td class="num nums ${v.profit>=0?'profit-pos':'profit-neg'}">${fmtMoney(v.profit)}</td>
+        <td class="num nums">${v.revenue>0?(v.profit/v.revenue*100).toFixed(1):'0.0'}%</td>
+      </tr>`).join('')}
+    </tbody></table>`;
+  }
+}
+
+/* ============================= SETTINGS ============================= */
+function renderSettings(){
+  const s = STATE.settings;
+  document.getElementById('setBizName').value = s.bizName || '';
+  document.getElementById('setCurrency').value = s.currency || '₱';
+  document.getElementById('togPackaging').checked = !!s.includePackaging;
+  document.getElementById('togTax').checked = !!s.includeTax;
+  document.getElementById('setTaxRate').value = s.taxRate || 0;
+  document.getElementById('setOpEx').value = s.operatingExpenses || 0;
+  document.getElementById('customFormula').value = s.customFormula || '';
+  document.getElementById('curPrefix1').textContent = s.currency || '₱';
+}
+
+function saveSimpleSettings(){
+  const s = STATE.settings;
+  s.bizName = document.getElementById('setBizName').value.trim() || 'Lexcel';
+  s.currency = document.getElementById('setCurrency').value.trim() || '₱';
+  s.includePackaging = document.getElementById('togPackaging').checked;
+  s.includeTax = document.getElementById('togTax').checked;
+  s.taxRate = Number(document.getElementById('setTaxRate').value)||0;
+  s.operatingExpenses = Number(document.getElementById('setOpEx').value)||0;
+  persist();
+  renderDashboard(); renderProducts(); updateSalePreview();
+  document.getElementById('curPrefix1').textContent = s.currency;
+}
+['setBizName','setCurrency','togPackaging','togTax','setTaxRate','setOpEx'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', saveSimpleSettings);
+});
+document.getElementById('setBizName').addEventListener('input', ()=>{ document.getElementById('bizNameDisplay').textContent = document.getElementById('setBizName').value || 'Lexcel'; });
+
+document.getElementById('btnSaveFormula').addEventListener('click',()=>{
+  const expr = document.getElementById('customFormula').value.trim();
+  const errEl = document.getElementById('formulaError');
+  if(expr){
+    const check = testFormula(expr);
+    if(!check.ok){ errEl.textContent = check.msg; errEl.style.display='block'; return; }
+  }
+  errEl.style.display='none';
+  STATE.settings.customFormula = expr;
+  persist();
+  renderDashboard(); renderProducts(); updateSalePreview();
+  toast(expr ? 'Custom formula saved' : 'Using the standard formula');
+});
+document.getElementById('btnResetFormula').addEventListener('click',()=>{
+  document.getElementById('customFormula').value = '';
+  document.getElementById('formulaError').style.display='none';
+  STATE.settings.customFormula = '';
+  persist();
+  renderDashboard(); renderProducts(); updateSalePreview();
+  toast('Back to the standard formula');
+});
+
+/* ============================= DATA / BACKUP ============================= */
+document.getElementById('btnExportJson').addEventListener('click',()=>{
+  const blob = new Blob([JSON.stringify({products:STATE.products, sales:STATE.sales, settings:STATE.settings}, null, 2)], {type:'application/json'});
+  downloadBlob(blob, (STATE.settings.bizName||'lexcel').replace(/\s+/g,'_').toLowerCase()+'_backup.json');
+  toast('Backup downloaded');
+});
+document.getElementById('btnExportCsv').addEventListener('click',()=>{
+  const header = ['Date','Product','Category','Quantity','Sell Price','Cost Price','Discount','Revenue','Profit'];
+  const rows = [...STATE.sales].sort((a,b)=>a.date.localeCompare(b.date)).map(s=>{
+    const p = byId(s.productId); if(!p) return null;
+    const r = computeSale(s,p);
+    return [s.date, p.name, p.category, s.quantity, p.sellPrice, p.costPrice, s.discount||0, r.revenue.toFixed(2), r.profit.toFixed(2)];
+  }).filter(Boolean);
+  const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  downloadBlob(blob, (STATE.settings.bizName||'lexcel').replace(/\s+/g,'_').toLowerCase()+'_sales.csv');
+  toast('Spreadsheet downloaded');
+});
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data.products || !data.sales) throw new Error('File missing products/sales');
+      STATE = { products:data.products, sales:data.sales, settings: Object.assign({bizName:'Lexcel',currency:'₱',includePackaging:false,includeTax:false,taxRate:0,operatingExpenses:0,customFormula:''}, data.settings||{}) };
+      persist();
+      renderAll();
+      toast('Backup restored');
+    }catch(err){
+      alert('Could not read that file: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+document.getElementById('btnClearAll').addEventListener('click',()=>{
+  if(confirm('This deletes ALL products and sales on this device. This cannot be undone. Continue?')){
+    STATE.products = []; STATE.sales = [];
+    persist(); renderAll();
+    toast('All data erased');
+  }
+});
+
+/* ============================= INIT ============================= */
+function renderAll(){
+  renderProducts();
+  populateSaleProductSelect();
+  renderSalesTable();
+  renderSettings();
+  renderDashboard();
+}
+renderAll();
+
+})();
+</script>
+</body>
+</html>
